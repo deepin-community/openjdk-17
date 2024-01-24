@@ -8,7 +8,7 @@
  ])
  
  ################################################################################
-@@ -304,3 +305,41 @@ AC_DEFUN_ONCE([LIB_SETUP_HARFBUZZ],
+@@ -309,3 +310,41 @@ AC_DEFUN_ONCE([LIB_SETUP_HARFBUZZ],
    AC_SUBST(HARFBUZZ_CFLAGS)
    AC_SUBST(HARFBUZZ_LIBS)
  ])
@@ -70,7 +70,7 @@
  
 --- a/make/autoconf/spec.gmk.in
 +++ b/make/autoconf/spec.gmk.in
-@@ -764,6 +764,7 @@ TAR_SUPPORTS_TRANSFORM:=@TAR_SUPPORTS_TR
+@@ -774,6 +774,7 @@ TAR_SUPPORTS_TRANSFORM:=@TAR_SUPPORTS_TR
  # Build setup
  USE_EXTERNAL_LIBJPEG:=@USE_EXTERNAL_LIBJPEG@
  USE_EXTERNAL_LIBGIF:=@USE_EXTERNAL_LIBGIF@
@@ -177,3 +177,19 @@
 +            pbRecvBuffer, pcbRecvLength, lpBytesReturned))
 +
 +#endif
+--- a/test/jdk/java/security/misc/Versions.java
++++ b/test/jdk/java/security/misc/Versions.java
+@@ -55,12 +55,7 @@ public class Versions {
+                         Pattern.compile("list/(?<n>[0-9a-f]+)/public_suffix_list.dat"),
+                         "src/java.base/share/legal/public_suffix.md",
+                         Pattern.compile("list/(?<n>[0-9a-f]+)/public_suffix_list.dat"),
+-                        "java.base/public_suffix.md"},
+-                {"src/java.smartcardio/unix/native/libj2pcsc/MUSCLE/pcsclite.h",
+-                        Pattern.compile("#define PCSCLITE_VERSION_NUMBER +\"(?<n>[0-9\\.]+)\""),
+-                        "src/java.smartcardio/unix/legal/pcsclite.md",
+-                        Pattern.compile("## PC/SC Lite v(?<n>[0-9\\.]+)"),
+-                        "java.smartcardio/pcsclite.md"}
++                        "java.base/public_suffix.md"}
+         };
+     }
+ 
