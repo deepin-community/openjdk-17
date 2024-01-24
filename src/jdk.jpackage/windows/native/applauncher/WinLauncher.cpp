@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,6 +25,7 @@
 
 #include <io.h>
 #include <fcntl.h>
+#include <stdlib.h>
 #include <windows.h>
 
 #include "AppLauncher.h"
@@ -33,6 +34,7 @@
 #include "Dll.h"
 #include "WinApp.h"
 #include "Toolbox.h"
+#include "Executor.h"
 #include "FileUtils.h"
 #include "UniqueHandle.h"
 #include "ErrorHandling.h"
@@ -138,21 +140,57 @@ void launchApp() {
 
     const tstring launcherPath = SysInfo::getProcessModulePath();
     const tstring appImageRoot = FileUtils::dirname(launcherPath);
-    const tstring runtimeBinPath = FileUtils::mkpath()
-            << appImageRoot << _T("runtime") << _T("bin");
+    const tstring appDirPath = FileUtils::mkpath() << appImageRoot << _T("app");
 
-    std::unique_ptr<Jvm> jvm(AppLauncher()
-        .setImageRoot(appImageRoot)
+    const AppLauncher appLauncher = AppLauncher().setImageRoot(appImageRoot)
         .addJvmLibName(_T("bin\\jli.dll"))
-        .setAppDir(FileUtils::mkpath() << appImageRoot << _T("app"))
+        .setAppDir(appDirPath)
         .setLibEnvVariableName(_T("PATH"))
         .setDefaultRuntimePath(FileUtils::mkpath() << appImageRoot
-                << _T("runtime"))
-        .createJvmLauncher());
+            << _T("runtime"));
 
-    // zip.dll may be loaded by java without full path
+    const bool restart = !appLauncher.libEnvVariableContainsAppDir();
+
+    std::unique_ptr<Jvm> jvm(appLauncher.createJvmLauncher());
+
+    if (restart) {
+        jvm->setEnvVariables();
+
+        jvm = std::unique_ptr<Jvm>();
+
+        UniqueHandle jobHandle(CreateJobObject(NULL, NULL));
+        if (jobHandle.get() == NULL) {
+            JP_THROW(SysError(tstrings::any() << "CreateJobObject() failed",
+                                                            CreateJobObject));
+        }
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION jobInfo = { };
+        jobInfo.BasicLimitInformation.LimitFlags =
+                                          JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+        if (!SetInformationJobObject(jobHandle.get(),
+                JobObjectExtendedLimitInformation, &jobInfo, sizeof(jobInfo))) {
+            JP_THROW(SysError(tstrings::any() <<
+                                            "SetInformationJobObject() failed",
+                                                    SetInformationJobObject));
+        }
+
+        Executor exec(launcherPath);
+        exec.visible(true).withJobObject(jobHandle.get()).suspended(true).inherit(true);
+        const auto args = SysInfo::getCommandArgs();
+        std::for_each(args.begin(), args.end(), [&exec] (const tstring& arg) {
+            exec.arg(arg);
+        });
+
+        DWORD exitCode = static_cast<DWORD>(exec.execAndWaitForExit());
+
+        exit(exitCode);
+        return;
+    }
+
+    // zip.dll (and others) may be loaded by java without full path
     // make sure it will look in runtime/bin
+    const tstring runtimeBinPath = FileUtils::dirname(jvm->getPath());
     SetDllDirectory(runtimeBinPath.c_str());
+    LOG_TRACE(tstrings::any() << "SetDllDirectory to: " << runtimeBinPath);
 
     const DllWrapper jliDll(jvm->getPath());
     std::unique_ptr<DllWrapper> splashDll;
