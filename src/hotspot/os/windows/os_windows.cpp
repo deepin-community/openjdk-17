@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -385,8 +385,9 @@ void os::init_system_properties_values() {
     char path[MAX_PATH];
     char buf[2 * MAX_PATH + 2 * sizeof(EXT_DIR) + sizeof(PACKAGE_DIR) + 1];
     GetWindowsDirectory(path, MAX_PATH);
-    sprintf(buf, "%s%s;%s%s%s", Arguments::get_java_home(), EXT_DIR,
-            path, PACKAGE_DIR, EXT_DIR);
+    os::snprintf_checked(buf, sizeof(buf), "%s%s;%s%s%s",
+                         Arguments::get_java_home(), EXT_DIR,
+                         path, PACKAGE_DIR, EXT_DIR);
     Arguments::set_ext_dirs(buf);
   }
   #undef EXT_DIR
@@ -1175,38 +1176,50 @@ void os::shutdown() {
 
 static HANDLE dumpFile = NULL;
 
-// Check if dump file can be created.
-void os::check_dump_limit(char* buffer, size_t buffsz) {
-  bool status = true;
+// Check if core dump is active and if a core dump file can be created
+void os::check_core_dump_prerequisites(char* buffer, size_t bufferSize, bool check_only) {
   if (!FLAG_IS_DEFAULT(CreateCoredumpOnCrash) && !CreateCoredumpOnCrash) {
-    jio_snprintf(buffer, buffsz, "CreateCoredumpOnCrash is disabled from command line");
-    status = false;
-  }
-
+    jio_snprintf(buffer, bufferSize, "CreateCoredumpOnCrash is disabled from command line");
+    VMError::record_coredump_status(buffer, false);
+  } else {
+    bool success = true;
+    bool warn = true;
 #ifndef ASSERT
-  if (!os::win32::is_windows_server() && FLAG_IS_DEFAULT(CreateCoredumpOnCrash)) {
-    jio_snprintf(buffer, buffsz, "Minidumps are not enabled by default on client versions of Windows");
-    status = false;
-  }
+    if (!os::win32::is_windows_server() && FLAG_IS_DEFAULT(CreateCoredumpOnCrash)) {
+      jio_snprintf(buffer, bufferSize, "Minidumps are not enabled by default on client versions of Windows");
+      success = false;
+      warn = true;
+    }
 #endif
 
-  if (status) {
-    const char* cwd = get_current_directory(NULL, 0);
-    int pid = current_process_id();
-    if (cwd != NULL) {
-      jio_snprintf(buffer, buffsz, "%s\\hs_err_pid%u.mdmp", cwd, pid);
-    } else {
-      jio_snprintf(buffer, buffsz, ".\\hs_err_pid%u.mdmp", pid);
+    if (success) {
+      if (!check_only) {
+        const char* cwd = get_current_directory(nullptr, 0);
+        int pid = current_process_id();
+        if (cwd != nullptr) {
+          jio_snprintf(buffer, bufferSize, "%s\\hs_err_pid%u.mdmp", cwd, pid);
+        } else {
+          jio_snprintf(buffer, bufferSize, ".\\hs_err_pid%u.mdmp", pid);
+        }
+
+        if (dumpFile == nullptr &&
+            (dumpFile = CreateFile(buffer, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr))
+            == INVALID_HANDLE_VALUE) {
+          jio_snprintf(buffer, bufferSize, "Failed to create minidump file (0x%x).", GetLastError());
+          success = false;
+        }
+      } else {
+        // For now on Windows, there are no more checks that we can do
+        warn = false;
+      }
     }
 
-    if (dumpFile == NULL &&
-       (dumpFile = CreateFile(buffer, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL))
-                 == INVALID_HANDLE_VALUE) {
-      jio_snprintf(buffer, buffsz, "Failed to create minidump file (0x%x).", GetLastError());
-      status = false;
+    if (!check_only) {
+      VMError::record_coredump_status(buffer, success);
+    } else if (warn) {
+      warning("CreateCoredumpOnCrash specified, but %s", buffer);
     }
   }
-  VMError::record_coredump_status(buffer, status);
 }
 
 void os::abort(bool dump_core, void* siginfo, const void* context) {
@@ -1896,7 +1909,10 @@ void os::win32::print_windows_version(outputStream* st) {
       // - 2016 GA 10/2016 build: 14393
       // - 2019 GA 11/2018 build: 17763
       // - 2022 GA 08/2021 build: 20348
-      if (build_number > 20347) {
+      // - 2025 Preview build   : 26040
+      if (build_number > 26039) {
+        st->print("Server 2025");
+      } else if (build_number > 20347) {
         st->print("Server 2022");
       } else if (build_number > 17762) {
         st->print("Server 2019");
@@ -3351,7 +3367,8 @@ static char* map_or_reserve_memory_aligned(size_t size, size_t alignment, int fi
                                      os::attempt_reserve_memory_at(aligned_base, size);
   }
 
-  assert(aligned_base != NULL, "Did not manage to re-map after %d attempts?", max_attempts);
+  assert(aligned_base != nullptr,
+      "Did not manage to re-map after %d attempts (size %zu, alignment %zu, file descriptor %d)", max_attempts, size, alignment, file_desc);
 
   return aligned_base;
 }
@@ -4542,7 +4559,7 @@ static errno_t get_full_path(LPCWSTR unicode_path, LPWSTR* full_path) {
   return ERROR_SUCCESS;
 }
 
-static void set_path_prefix(char* buf, LPWSTR* prefix, int* prefix_off, bool* needs_fullpath) {
+static void set_path_prefix(char* buf, LPCWSTR* prefix, int* prefix_off, bool* needs_fullpath) {
   *prefix_off = 0;
   *needs_fullpath = true;
 
@@ -4578,7 +4595,7 @@ static wchar_t* wide_abs_unc_path(char const* path, errno_t & err, int additiona
   strncpy(buf, path, buf_len);
   os::native_path(buf);
 
-  LPWSTR prefix = NULL;
+  LPCWSTR prefix = NULL;
   int prefix_off = 0;
   bool needs_fullpath = true;
   set_path_prefix(buf, &prefix, &prefix_off, &needs_fullpath);
@@ -4842,8 +4859,19 @@ FILE* os::open(int fd, const char* mode) {
   return ::_fdopen(fd, mode);
 }
 
-size_t os::write(int fd, const void *buf, unsigned int nBytes) {
-  return ::write(fd, buf, nBytes);
+ssize_t os::pd_write(int fd, const void *buf, size_t nBytes) {
+  ssize_t original_len = (ssize_t)nBytes;
+  while (nBytes > 0) {
+    unsigned int len = nBytes > INT_MAX ? INT_MAX : (unsigned int)nBytes;
+    // On Windows, ::write takes 'unsigned int' no of bytes, so nBytes should be split if larger.
+    ssize_t written_bytes = ::write(fd, buf, len);
+    if (written_bytes < 0) {
+      return OS_ERR;
+    }
+    nBytes -= written_bytes;
+    buf = (char *)buf + written_bytes;
+  }
+  return original_len;
 }
 
 int os::close(int fd) {

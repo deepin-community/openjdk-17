@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1997, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1997, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -55,6 +55,31 @@ const size_t REHASH_LEN = 100;
 const size_t ON_STACK_BUFFER_LENGTH = 128;
 
 // --------------------------------------------------------------------------
+
+Symbol* volatile TempSymbolCleanupDelayer::_queue[QueueSize] = {};
+volatile uint TempSymbolCleanupDelayer::_index = 0;
+
+// Keep this symbol alive for some time to allow for reuse.
+// Temp symbols for the same string can often be created in quick succession,
+// and this queue allows them to be reused instead of churning.
+void TempSymbolCleanupDelayer::delay_cleanup(Symbol* sym) {
+  assert(sym != nullptr, "precondition");
+  sym->increment_refcount();
+  uint i = Atomic::add(&_index, 1u) % QueueSize;
+  Symbol* old = Atomic::xchg(&_queue[i], sym);
+  if (old != nullptr) {
+    old->decrement_refcount();
+  }
+}
+
+void TempSymbolCleanupDelayer::drain_queue() {
+  for (uint i = 0; i < QueueSize; i++) {
+    Symbol* sym = Atomic::xchg(&_queue[i], (Symbol*) nullptr);
+    if (sym != nullptr) {
+      sym->decrement_refcount();
+    }
+  }
+}
 
 inline bool symbol_equals_compact_hashtable_entry(Symbol* value, const char* key, int len) {
   if (value->equals(key, len)) {
@@ -714,6 +739,10 @@ struct SymbolTableDeleteCheck : StackObj {
 };
 
 void SymbolTable::clean_dead_entries(JavaThread* jt) {
+  // BulkDeleteTask::prepare() may take ConcurrentHashTableResize_lock (nosafepoint-2).
+  // When NativeHeapTrimmer is enabled, SuspendMark may take NativeHeapTrimmer::_lock (nosafepoint).
+  // Take SuspendMark first to keep lock order and avoid deadlock.
+  NativeHeapTrimmer::SuspendMark sm("symboltable");
   SymbolTableHash::BulkDeleteTask bdt(_local_table);
   if (!bdt.prepare(jt)) {
     return;
@@ -721,7 +750,6 @@ void SymbolTable::clean_dead_entries(JavaThread* jt) {
 
   SymbolTableDeleteCheck stdc;
   SymbolTableDoDelete stdd;
-  NativeHeapTrimmer::SuspendMark sm("symboltable");
   {
     TraceTime timer("Clean", TRACETIME_LOG(Debug, symboltable, perf));
     while (bdt.do_task(jt, stdc, stdd)) {

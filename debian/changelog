@@ -1,13 +1,463 @@
-openjdk-17 (17.0.12+7-1deepin1) unstable; urgency=medium
+openjdk-17 (17.0.21.1+2-1~deb12u1) bookworm-security; urgency=medium
 
-  * Use gcc-13 build.
-  * Revert t64.
+  * Rebuild for bookworm.
 
- -- xiangzelong <xiangzelong@deepin.org>  Tue, 30 Jul 2024 17:10:45 +0800
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Thu, 19 Nov 2026 09:07:27 +0100
+
+openjdk-17 (17.0.21.1+2-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.21.1 release, build 2.
+    + CVEs:
+      + CVE-2026-114938
+      + CVE-2026-114939
+      + CVE-2026-114940
+      + CVE-2026-114942
+      + CVE-2026-114943
+      + CVE-2026-114944
+      + CVE-2026-114945
+      + CVE-2026-114946
+  * d/dbg.py: gdb stack unwinder introduces significant delays when
+    debuginfod is enabled processing the first stack. Disable gdb stack
+    unwinder by default, add sanity checks.
+  * d/copyright: Regenerate.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Wed, 18 Nov 2026 18:18:52 +1300
+
+openjdk-17 (17.0.21.0.3+1-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.21.0.3, build 1.
+    - CVEs:
+      + CVE-2026-91403: JDK-8395690: CA certificate improvements.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Wed, 28 Oct 2026 22:36:55 -0500
+
+openjdk-17 (17.0.21+9-1~deb12u1) bookworm-security; urgency=medium
+
+  * Rebuild for bookworm.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Fri, 23 Oct 2026 19:46:13 +0200
+
+openjdk-17 (17.0.21+9-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.21 release, build 9.
+    - CVEs:
+      + CVE-2026-91415
+      + CVE-2026-91398
+      + CVE-2026-91382
+      + CVE-2026-91411
+      + CVE-2026-83395
+      + CVE-2026-87294
+      + CVE-2026-91394
+      + CVE-2026-87290
+      + CVE-2026-83387
+      + CVE-2026-91462
+      + CVE-2026-83374
+      + CVE-2026-91410
+      + CVE-2026-91332
+      + CVE-2026-91451
+      + CVE-2026-91373
+      + CVE-2026-83380
+      + CVE-2026-83400
+      + CVE-2026-91463
+      + CVE-2026-91464
+      + CVE-2026-91453
+      + CVE-2026-91452
+      + CVE-2026-91418
+      + CVE-2026-91487
+      + CVE-2026-83381
+      + CVE-2026-91374
+      + CVE-2026-91375
+      + CVE-2026-91379
+      + CVE-2026-91380
+      + CVE-2026-91334
+      + CVE-2026-87367
+      + CVE-2026-87292
+      + CVE-2026-83376
+      + CVE-2026-91461
+      + CVE-2026-91397
+      + CVE-2026-91400
+      + CVE-2026-91335
+  * d/watch: Regenerate.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Thu, 22 Oct 2026 14:31:48 +1300
+
+openjdk-17 (17.0.21~8ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.21 early access, build 8.
+  * d/t: Add loong64 specific problemlists.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Thu, 08 Oct 2026 19:12:59 +1300
+
+openjdk-17 (17.0.21~6ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.21 early access, build 6.
+  * d/JB-{jre-headless,jre-zero}.overrides.in: suppress specific-
+    address-in-shared-library for i386 (JDK-6454213).
+  * d/p/{jdk-8334502-proposed.patch,jdk-8334502-proposed.patch,loong64-
+    autoconf-config.diff}: Drop patches applied upstream.
+  * d/watch: Regenerate.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Wed, 16 Sep 2026 08:29:33 +1200
+
+openjdk-17 (17.0.20.1+1-1~deb12u1) bookworm-security; urgency=medium
+
+  * Rebuild for bookworm.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Tue, 25 Aug 2026 09:29:15 +0200
+
+openjdk-17 (17.0.20.1+1-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.20.1 release, build 1.
+    - CVEs:
+      + CVE-2026-61308
+      + CVE-2026-70907
+      + CVE-2026-60589
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Wed, 19 Aug 2026 09:18:02 +1200
+
+openjdk-17 (17.0.20+8-2) unstable; urgency=medium
+
+  [ Vladimir Petko ]
+  * d/t/jtreg-autopkgtest.in: Do not fail tests if ulimit can not be
+    set.
+  * d/t/problems.csv: Add test exclusions.
+  * d/rules: Disable riscv tests on Ubuntu.
+  * d/rules: Collect hotspot error and replay logs after jtreg tests.
+  * d/copyright-generator: Fix license SPDX identifiers.
+
+  [ Matthias Klose ]
+  * Build using GCC 16 on development releases.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Sun, 16 Aug 2026 13:58:03 +1200
+
+openjdk-17 (17.0.20+8-1~deb12u1) bookworm-security; urgency=medium
+
+  * Non-maintainer upload by the LTS Team.
+  * Backport to bookworm.
+
+ -- Emilio Pozuelo Monfort <pochu@debian.org>  Mon, 27 Jul 2026 11:39:42 +0200
+
+openjdk-17 (17.0.20+8-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.20 release, build 8.
+    - CVEs:
+      + CVE-2026-46968
+      + CVE-2026-46917
+      + CVE-2026-47010
+      + CVE-2026-47021
+      + CVE-2026-47027
+      + CVE-2026-60147
+      + CVE-2026-47059
+      + CVE-2026-47063
+      + CVE-2026-41254
+    - Release notes: https://bit.ly/openjdk17020.
+  * d/watch: Regenerate.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Wed, 22 Jul 2026 13:04:53 +1200
+
+openjdk-17 (17.0.20~7ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.20 early access, build 7.
+  * d/copyright: Regenerate.
+  * d/p/jdk-8387580-proposed.diff: Apply proposed patch to resolve
+    S390x ftbfs (JDK-8387580).
+  * d/t/problems.csv: Drop obsolete versions, add openjdk-28,
+    add new exclusions.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Thu, 16 Jul 2026 16:12:15 +1200
+
+openjdk-17 (17.0.20~5ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.20 early access, build 5.
+  * d/rules: Do not perform copyright validation for old releases.
+  * d/rules: Check DEB_BUILD_PROFILES in addition to DEB_BUILD_OPTIONS
+    to set up with_check variable. Do not check control files if
+    with_check is disabled (Closes: #1137499).
+  * d/control.in: Add myself to uploaders.
+  * d/p/ldap-timeout-test-use-ip.patch: Refresh patch.
+  * d/JB-jre-{headless,zero}.overrides.in: Drop exit-in-shared-library
+    override.
+  * Regenerate files.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Mon, 08 Jun 2026 12:54:18 +1200
+
+openjdk-17 (17.0.19+10-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.19 release, build 10.
+    - CVEs:
+      + CVE-2026-22016: 8370529: Enhance Path Factories Redux
+      + CVE-2026-34282: 8374557: Enhance TLS connection handling
+      + CVE-2026-22021: 8371830: Enhance certificate chain validation
+      + CVE-2026-22013: 8370615: Improve Kerberos credentialing
+      + CVE-2026-23865: 8379158: Update FreeType to 2.14.2
+      + CVE-2026-22018: 8370986: Enhance Zip file reading
+      + CVE-2026-22007: 8369575: Enhance crypto algorithm support
+      + CVE-2026-34268: 8371935: Enhance key generation
+  * d/rules: Check generated files only on amd64. This resolves riscv64
+    ftbfs, as some architectures change with_check flag.
+  * d/t/problems.csv: Fix typo in loong64 excluded tests lists.
+  * Add common GPL and Apache license headers to copyright generator.
+  * d/copyright: Regenerate.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Fri, 24 Apr 2026 14:03:13 +1200
+
+openjdk-17 (17.0.19~9ea-2) unstable; urgency=medium
+
+  * Ensure that all generated files are up to date:
+    - The copyright generator now checks if the current directory contains
+      an unpacked OpenJDK tree by verifying the presence of the
+      ASSEMBLY_EXCEPTION file.
+    - The copyright generator now drops common license text in-memory,
+      without running a shell script that modifies the source tree.
+    - d/rules: Add targets to generate all files and check that they match
+      the ones provided in the source package.
+    - d/rules: Add nogen DEB_BUILD_OPTION to disable file regeneration.
+  * d/rules: Use '-' instead of '~' in opt version string, swap package
+    version and distribution.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Fri, 17 Apr 2026 09:49:19 +1200
+
+openjdk-17 (17.0.19~9ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.19 early access, build 9.
+  * d/rules: Revert replace '~' with '-' in the optional version string.
+    This should be resolved upstream.
+  * d/t/problems.csv: Update problem list.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Mon, 16 Mar 2026 15:31:01 +1300
+
+openjdk-17 (17.0.19~6ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.19 early access, build 6.
+  * d/rules: Replace '~' with '-' in the optional version string.
+  * d/dbg.py: Fix syntax errors in gdb unwinder, do not install unwinder
+    for zero, install hotspot unwinder in the correct directory.
+    Disable debug traces. Load unwinder in the disabled state.
+    Return iterator rather than list from OpenJDKFrameFilter.flatten().
+    Remove unused code from NativeMethodInfo.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Fri, 13 Mar 2026 14:44:35 +1300
+
+openjdk-17 (17.0.18+8-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.18 release, build 8.
+   - CVEs:
+      + CVE-2026-21945: 8368032: Enhance Certificate Checking.
+      + CVE-2026-21932: 8359501: Enhance Handling of URIs.
+      + CVE-2026-21933: 8362632: Improve HttpServer Request handling.
+      + CVE-2026-21925: 8341496: Improve JMX connections.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Thu, 22 Jan 2026 12:38:58 +1300
+
+openjdk-17 (17.0.18~7ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.18 early access, build 7.
+
+  [ Matthias Klose ]
+  * d/rules: Run the testsuite for loong64, don't run on riscv64.
+
+  [ Pushkar Kulkarni ]
+  * d/t/jtreg-autopkgtest.*: use locale name "C.UTF-8" on bionic
+    and focal.
+
+  [ Vladimir Petko ]
+  * d/p/jdk-8369450-proposed.patch: Drop patch applied upstream.
+  * Update override comments for unstripped-binary-or-object. We need to
+    keep symbols for Native Memory Tracking to work.
+  * d/{JB-doc.overrides.in, JB-jre-headless.overrides.in}: Add override
+    for old FSF copyright address.
+  * d/s/lintian-overrides: Override false positive debian-rules-calls-
+    nproc. The utility is used to log the number of processors.
+
+ -- Vladimir Petko <vladimir.petko@canonical.com>  Mon, 05 Jan 2026 15:55:38 +1300
+
+openjdk-17 (17.0.17+10-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.17 release, build 10.
+    - CVEs:
+      + CVE-2025-53057, 8360937: Enhance certificate handling.
+      + CVE-2025-53066, 8356294: Enhance Path Factories.
+
+  [ Vladimir Petko ]
+  * d/t/jtreg-autopkgtest.*: Force utf-8 encoding.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 22 Oct 2025 08:14:04 +0200
+
+openjdk-17 (17.0.17~8ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.17 early access, build 8.
+
+  [ Vladimir Petko ]
+  * d/t/problems.csv: Synchronize problem list.
+  * d/p/jdk-8369450.patch: Fix ftbfs due to rust-coreutils date. LP: #2127120.
+
+ -- Matthias Klose <doko@ubuntu.com>  Sat, 27 Sep 2025 16:17:54 +0200
+
+openjdk-17 (17.0.17~5ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.17 early access, build 5.
+
+  [ Matthias Klose ]
+  * Build using GCC 15 on development releases.
+
+  [ Vladimir Petko ]
+  * d/rules: Disable jtreg test for riscv on focal.
+
+ -- Matthias Klose <doko@ubuntu.com>  Fri, 29 Aug 2025 12:15:33 +0200
+
+openjdk-17 (17.0.16+8-1) unstable; urgency=high
+
+  * OpenJDK 17.0.16 release, build 8.
+    - Addresses CVE-2025-5010, CVE-2025-50059, CVE-2025-30754, CVE-2025-30749.
+      See https://openjdk.org/groups/vulnerability/advisories/2025-07-15.
+    - Release notes:
+      https://mail.openjdk.org/pipermail/jdk-updates-dev/2025-July/045614.html
+
+  [ Vladimir Petko ]
+  * d/p/jdk-8359735-proposed.patch: Fix process tests failing in Ubuntu 25.10.
+  * d/copyright-generator/copyright-gen.py: Bump copyright year.
+  * d/copyright: Regenerate.
+
+ -- Matthias Klose <doko@ubuntu.com>  Sat, 19 Jul 2025 12:22:09 +0200
+
+openjdk-17 (17.0.16~5ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.16 early access, build 5.
+
+ -- Matthias Klose <doko@ubuntu.com>  Tue, 03 Jun 2025 14:01:14 +0200
+
+openjdk-17 (17.0.15+6-1) unstable; urgency=high
+
+  * OpenJDK 17.0.15 release, build 6.
+    - Addresses CVE-2025-30698, CVE-2025-30691, CVE-2025-21587.
+
+  * Honour DEB_BUILD_OPTIONS=parallel=N while running jtreg tests (Helmut
+    Grohne). Addresses: #1095920.
+
+ -- Matthias Klose <doko@ubuntu.com>  Thu, 24 Apr 2025 02:05:43 +0200
+
+openjdk-17 (17.0.15~5ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.14 early access, build 5.
+
+  [ Vladimir Petko ]
+  * d/t/problems.csv: Disable tests failing due to upstream bugs.
+
+ -- Matthias Klose <doko@ubuntu.com>  Thu, 27 Mar 2025 13:35:58 +0100
+
+openjdk-17 (17.0.15~4ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.14 early access, build 4.
+
+  [ Vladimir Petko ]
+  * d/rules: Disable dtrace on jammy armhf (was not enabled before and cannot
+    be built due to a GCC ICE (see LP #2091225).
+
+ -- Matthias Klose <doko@ubuntu.com>  Sat, 15 Mar 2025 09:45:37 +0100
+
+openjdk-17 (17.0.14+7-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.14 release, build 7. Release notes:
+    https://mail.openjdk.org/pipermail/jdk-updates-dev/2025-January/040827.html
+
+    - CVEs:
+      + CVE-2025-21502 - 8330045: Enhance array handling.
+
+  [ Vladimir Petko ]
+  * d/rules: Dump complete hs_err_pid and replay_pid logs to stdout.
+  * d/t/problems.csv: Add openjdk-24 and openjdk-25 to the problems.csv.
+  * d/rules: Create link to jquery-3.7.1.min.js instead of jquery-3.6.1.min.js
+    (LP: #2095455).
+  * d/copyright: Regenerate.
+
+  [ Matthias Klose ]
+  * d/rules: Also dump logs for zero builds and for build failures.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 22 Jan 2025 10:17:58 +0100
+
+openjdk-17 (17.0.14~6ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.14 early access, build 6.
+
+  [ Pushkar Kulkarni ]
+  * d/t/problems.csv: Update based on recent JTREG runs.
+
+ -- Matthias Klose <doko@ubuntu.com>  Fri, 20 Dec 2024 11:09:22 +0100
+
+openjdk-17 (17.0.13+11-2) unstable; urgency=high
+
+  * Don't enable dtrace on POWER* architectures.
+
+ -- Matthias Klose <doko@ubuntu.com>  Thu, 17 Oct 2024 10:59:51 +0200
+
+openjdk-17 (17.0.13+11-1) unstable; urgency=high
+
+  * OpenJDK 17.0.13 release, build 11.
+    - CVE-2024-21208
+    - CVE-2024-21210
+    - CVE-2024-21217
+    - CVE-2024-21235
+
+  [ Vladimir Petko ]
+  * d/rules: do not include dtrace support for S390x (JDK-8305174).
+  * d/t/problems.csv: Disable jdk/sun/security/util/Debug/DebugOptions.java
+    due to JDK-8339713.
+
+ -- Matthias Klose <doko@ubuntu.com>  Wed, 16 Oct 2024 12:01:58 +0200
+
+openjdk-17 (17.0.13~6ea-1) unstable; urgency=medium
+
+  * OpenJDK 17.0.13 early access, build 6.
+
+  [ Vladimir Petko ]
+  * d/copyright-generator/strip-common-licenses.sh: Add GPLv3 to the
+    list of common licenses.
+  * d/JB-*.override.in: Update lintian overrides.
+  * d/s/lintian-override: Add source-contains-prebuilt-javascript-object
+    due to LP: 2032992.
+  * d/p/jdk-8334895-proposed.patch: Fix typo in the patch description.
+  * d/t/problemlist.csv: Update problemlist.csv for July release
+  * d/t/jtreg-autopkgtest.{in,sh}: Increase jtreg test timeouts.
+  * Enable dtrace support.
+
+ -- Matthias Klose <doko@ubuntu.com>  Mon, 09 Sep 2024 15:48:20 +0200
+
+openjdk-17 (17.0.12+7-2) unstable; urgency=medium
+
+  [ Vladimir Petko ]
+  * d/p/jdk-8312488.patch: Add upstream patch to resolve jpackage crash.
+  * d/copyright: Regenerate copyright.
+  * d/rules, d/t/*: Collate all excluded tests into d/t/problemlist.csv.
+  * d/rules: Enable fallback linker for Foreign Function and Memory API
+    on i386 and armhf.
+  * d/watch: Use fixed googletest version.
+  * d/p/jdk-8336529-proposed.patch: Fix time_t migration issue on armhf.
+    openjdk is unable to set file last modified timestamp.
+  * d/p/jdk-8334895-proposed.patch: Refresh patch.
+  * d/rules: Relax jtreg7 version condition for backports.
+  * d/rules, d/control.in: Depend on pkgconf rather than pkg-config in
+    bookworm and later releases. This resolves lintian warning
+    build-depends-on-obsolete-package Build-Depends: pkg-config => pkgconf.
+  * d/rules: Drop autotools-dev dependency for the modern debhelper.
+    This resolves obsolete autotools-dev dependency lintian warning.
+    See #844191.
+
+ -- Matthias Klose <doko@ubuntu.com>  Tue, 30 Jul 2024 08:42:49 +0200
 
 openjdk-17 (17.0.12+7-1) unstable; urgency=medium
 
   * OpenJDK 17.0.12 release, build 7.
+    - CVEs:
+      + CVE-2024-21147
+      + CVE-2024-21145
+      + CVE-2024-21140
+      + CVE-2024-21131
+      + CVE-2024-21138
+    - Security Fixes:
+      + JDK-8316138: Added GlobalSign R46 and E46 root CA certificates.
+      + JDK-8256660: Disabled DTLS 1.0.
+      + JDK-8326891: Native executables and libraries on Linux use
+        RPATH instead of RUNPATH.
 
  -- Matthias Klose <doko@ubuntu.com>  Wed, 17 Jul 2024 13:02:09 +0200
 

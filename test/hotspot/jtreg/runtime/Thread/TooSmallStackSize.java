@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,6 +28,7 @@
  * VMThreadStackSize values should result in an error message that shows
  * the minimum stack size value for each thread type.
  * @library /test/lib
+ * @requires vm.flagless
  * @modules java.base/jdk.internal.misc
  *          java.management
  * @run driver TooSmallStackSize
@@ -101,7 +102,7 @@ public class TooSmallStackSize {
 
         System.out.println("*** Testing " + stackOption + stackSize);
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
             stackOption + stackSize,
             // Uncomment the following to get log output
             // that shows actual thread creation sizes.
@@ -144,7 +145,7 @@ public class TooSmallStackSize {
     static void checkMinStackAllowed(String stackOption, String optionMesg, String stackSize) throws Exception {
         System.out.println("*** Testing " + stackOption + stackSize);
 
-        ProcessBuilder pb = ProcessTools.createJavaProcessBuilder(
+        ProcessBuilder pb = ProcessTools.createLimitedTestJavaProcessBuilder(
             stackOption + stackSize,
             // Uncomment the following to get log output
             // that shows actual thread creation sizes.

@@ -2113,13 +2113,14 @@ class StubGenerator: public StubCodeGenerator {
 
     BLOCK_COMMENT("Entry:");
 
-    const Register to       = c_rarg0;  // source array address
+    const Register to       = c_rarg0;  // destination array address
     const Register value    = c_rarg1;  // value
     const Register count    = c_rarg2;  // elements count
+    __ mov(r11, count);
 
     __ enter(); // required for proper stackwalking of RuntimeStub frame
 
-    __ generate_fill(t, aligned, to, value, count, rax, xmm0);
+    __ generate_fill(t, aligned, to, value, r11, rax, xmm0);
 
     __ vzeroupper();
     __ leave(); // required for proper stackwalking of RuntimeStub frame
@@ -6175,6 +6176,10 @@ address generate_avx_ghash_processBlocks() {
 
       __ BIND(L_finalBit);
       // Now have 1 to 63 bytes left to decode
+
+      // A padded Base64 tail shorter than one complete block is handled by Java.
+      __ cmpl(length, 4);
+      __ jcc(Assembler::less, L_bruteForce);
 
       // I was going to let Java take care of the final fragment
       // however it will repeatedly call this routine for every 4 bytes

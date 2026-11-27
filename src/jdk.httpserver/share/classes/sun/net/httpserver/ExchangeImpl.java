@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2005, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -198,6 +198,8 @@ class ExchangeImpl {
         return uos_orig;
     }
 
+    private static final byte[] CRLF = new byte[] {0x0D, 0x0A};
+
     public void sendResponseHeaders (int rCode, long contentLen)
     throws IOException
     {
@@ -206,10 +208,11 @@ class ExchangeImpl {
             throw new IOException ("headers already sent");
         }
         this.rcode = rCode;
-        String statusLine = "HTTP/1.1 "+rCode+Code.msg(rCode)+"\r\n";
+        String statusLine = "HTTP/1.1 "+rCode+Code.msg(rCode);
         OutputStream tmpout = new BufferedOutputStream (ros);
         PlaceholderOutputStream o = getPlaceholderResponseBody();
-        tmpout.write (bytes(statusLine, 0), 0, statusLine.length());
+        tmpout.write (bytes(statusLine, false, 0), 0, statusLine.length());
+        tmpout.write (CRLF);
         boolean noContentToSend = false; // assume there is content
         boolean noContentLengthHeader = false; // must not send Content-length is set
         rspHdrs.set("Date", FORMATTER.format(Instant.now()));
@@ -240,6 +243,7 @@ class ExchangeImpl {
             }
             noContentToSend = true;
             contentLen = 0;
+            o.setWrappedStream (new FixedLengthOutputStream (this, ros, contentLen));
         } else { /* not a HEAD request or 304 response */
             if (contentLen == 0) {
                 if (http10) {
@@ -282,9 +286,7 @@ class ExchangeImpl {
         sentHeaders = true;
         logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
         if (noContentToSend) {
-            WriteFinishedEvent e = new WriteFinishedEvent (this);
-            server.addEvent (e);
-            closed = true;
+            close();
         }
         server.logReply (rCode, req.requestLine(), null);
     }
@@ -297,11 +299,11 @@ class ExchangeImpl {
             List<String> values = entry.getValue();
             for (String val : values) {
                 int i = key.length();
-                buf = bytes (key, 2);
+                buf = bytes (key, true, 2);
                 buf[i++] = ':';
                 buf[i++] = ' ';
                 os.write (buf, 0, i);
-                buf = bytes (val, 2);
+                buf = bytes (val, false, 2);
                 i = val.length();
                 buf[i++] = '\r';
                 buf[i++] = '\n';
@@ -319,8 +321,14 @@ class ExchangeImpl {
      * Make sure that at least "extra" bytes are free at end
      * of rspbuf. Reallocate rspbuf if not big enough.
      * caller must check return value to see if rspbuf moved
+     *
+     * Header values are supposed to be limited to 7-bit ASCII
+     * but 8-bit has to be allowed (for ISO_8859_1). For efficiency
+     * we just down cast 16 bit Java chars to byte. We don't allow
+     * any character that can't be encoded in 8 bits.
      */
-    private byte[] bytes (String s, int extra) {
+    private byte[] bytes (String s, boolean isKey, int extra) throws IOException {
+        Utils.checkHeader(s, !isKey);
         int slen = s.length();
         if (slen+extra > rspbuf.length) {
             int diff = slen + extra - rspbuf.length;
@@ -378,7 +386,11 @@ class ExchangeImpl {
         if (attributes == null) {
             attributes = getHttpContext().getAttributes();
         }
-        attributes.put (name, value);
+        if (value != null) {
+            attributes.put (name, value);
+        } else {
+            attributes.remove (name);
+        }
     }
 
     public void setStreams (InputStream i, OutputStream o) {

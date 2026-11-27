@@ -280,12 +280,11 @@ InstanceKlass* InstanceKlass::nest_host(TRAPS) {
       ss.print("Nest host resolution of %s with host %s failed: ",
                this->external_name(), target_host_class);
       java_lang_Throwable::print(PENDING_EXCEPTION, &ss);
-      const char* msg = ss.as_string(true /* on C-heap */);
       constantPoolHandle cph(THREAD, constants());
-      SystemDictionary::add_nest_host_error(cph, _nest_host_index, msg);
+      SystemDictionary::add_nest_host_error(cph, _nest_host_index, ss);
       CLEAR_PENDING_EXCEPTION;
 
-      log_trace(class, nestmates)("%s", msg);
+      log_trace(class, nestmates)("%s", ss.base());
     } else {
       // A valid nest-host is an instance class in the current package that lists this
       // class as a nest member. If any of these conditions are not met the class is
@@ -324,10 +323,9 @@ InstanceKlass* InstanceKlass::nest_host(TRAPS) {
                  k->external_name(),
                  k->class_loader_data()->loader_name_and_id(),
                  error);
-        const char* msg = ss.as_string(true /* on C-heap */);
         constantPoolHandle cph(THREAD, constants());
-        SystemDictionary::add_nest_host_error(cph, _nest_host_index, msg);
-        log_trace(class, nestmates)("%s", msg);
+        SystemDictionary::add_nest_host_error(cph, _nest_host_index, ss);
+        log_trace(class, nestmates)("%s", ss.base());
       }
     }
   } else {
@@ -3427,11 +3425,13 @@ void InstanceKlass::print_on(outputStream* st) const {
     }
   }
   st->print(BULLET"method ordering:   "); method_ordering()->print_value_on(st);      st->cr();
-  st->print(BULLET"default_methods:   "); default_methods()->print_value_on(st);      st->cr();
-  if (Verbose && default_methods() != NULL) {
-    Array<Method*>* method_array = default_methods();
-    for (int i = 0; i < method_array->length(); i++) {
-      st->print("%d : ", i); method_array->at(i)->print_value(); st->cr();
+  if (default_methods() != nullptr) {
+    st->print(BULLET"default_methods:   "); default_methods()->print_value_on(st);    st->cr();
+    if (Verbose) {
+      Array<Method*>* method_array = default_methods();
+      for (int i = 0; i < method_array->length(); i++) {
+        st->print("%d : ", i); method_array->at(i)->print_value(); st->cr();
+      }
     }
   }
   if (default_vtable_indices() != NULL) {
@@ -3941,18 +3941,18 @@ void InstanceKlass::set_init_state(ClassState state) {
 // Globally, there is at least one previous version of a class to walk
 // during class unloading, which is saved because old methods in the class
 // are still running.   Otherwise the previous version list is cleaned up.
-bool InstanceKlass::_has_previous_versions = false;
+bool InstanceKlass::_should_clean_previous_versions = false;
 
 // Returns true if there are previous versions of a class for class
 // unloading only. Also resets the flag to false. purge_previous_version
 // will set the flag to true if there are any left, i.e., if there's any
 // work to do for next time. This is to avoid the expensive code cache
 // walk in CLDG::clean_deallocate_lists().
-bool InstanceKlass::has_previous_versions_and_reset() {
-  bool ret = _has_previous_versions;
-  log_trace(redefine, class, iklass, purge)("Class unloading: has_previous_versions = %s",
+bool InstanceKlass::should_clean_previous_versions_and_reset() {
+  bool ret = _should_clean_previous_versions;
+  log_trace(redefine, class, iklass, purge)("Class unloading: should_clean_previous_versions = %s",
      ret ? "true" : "false");
-  _has_previous_versions = false;
+  _should_clean_previous_versions = false;
   return ret;
 }
 
@@ -4027,12 +4027,17 @@ void InstanceKlass::purge_previous_version_list() {
       version++;
       continue;
     } else {
-      log_trace(redefine, class, iklass, purge)("previous version " INTPTR_FORMAT " is alive", p2i(pv_node));
       assert(pvcp->pool_holder() != NULL, "Constant pool with no holder");
       guarantee (!loader_data->is_unloading(), "unloaded classes can't be on the stack");
       live_count++;
-      // found a previous version for next time we do class unloading
-      _has_previous_versions = true;
+      if (pvcp->is_shared()) {
+        // Shared previous versions can never be removed so no cleaning is needed.
+        log_trace(redefine, class, iklass, purge)("previous version " PTR_FORMAT " is shared", p2i(pv_node));
+      } else {
+        // Previous version alive, set that clean is needed for next time.
+        _should_clean_previous_versions = true;
+        log_trace(redefine, class, iklass, purge)("previous version " PTR_FORMAT " is alive", p2i(pv_node));
+      }
     }
 
     // next previous version
@@ -4132,13 +4137,19 @@ void InstanceKlass::add_previous_version(InstanceKlass* scratch_class,
     return;
   }
 
-  // Add previous version if any methods are still running.
-  // Set has_previous_version flag for processing during class unloading.
-  _has_previous_versions = true;
-  log_trace(redefine, class, iklass, add) ("scratch class added; one of its methods is on_stack.");
+  // Add previous version if any methods are still running or if this is
+  // a shared class which should never be removed.
   assert(scratch_class->previous_versions() == NULL, "shouldn't have a previous version");
   scratch_class->link_previous_versions(previous_versions());
   link_previous_versions(scratch_class);
+  if (cp_ref->is_shared()) {
+    log_trace(redefine, class, iklass, add) ("scratch class added; class is shared");
+  } else {
+    //  We only set clean_previous_versions flag for processing during class
+    // unloading for non-shared classes.
+    _should_clean_previous_versions = true;
+    log_trace(redefine, class, iklass, add) ("scratch class added; one of its methods is on_stack.");
+  }
 } // end add_previous_version()
 
 #endif // INCLUDE_JVMTI

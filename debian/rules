@@ -84,6 +84,7 @@ endif
 
 is_upstream_release = yes
 
+
 srcdir		= .
 builddir	= build
 zbuilddir	= build-zero
@@ -160,12 +161,9 @@ endif
 jtreg_pkg = jtreg7
 testng_pkg= libtestng7-java
 
-with_check = $(if $(findstring nocheck, $(DEB_BUILD_OPTIONS)),,yes)
-ifneq (,$(filter $(DEB_HOST_ARCH), alpha armel ia64 loong64 mipsel mips64el powerpc x32))
+with_check = $(if $(findstring nocheck, $(DEB_BUILD_OPTIONS)$(DEB_BUILD_PROFILES)),,yes)
+ifneq (,$(filter $(DEB_HOST_ARCH), alpha armel mipsel mips64el powerpc riscv64 x32))
   with_check = disabled running check on $(DEB_HOST_ARCH)
-endif
-ifeq ($(distribution)-$(distrel),Ubuntu-riscv64)
-  with_check = yes
 endif
 
 # no jtreg backport yet
@@ -277,10 +275,18 @@ else ifneq (,$(filter $(distrel),mantic noble))
   export CC = $(DEB_HOST_GNU_TYPE)-gcc-13
   export CXX = $(DEB_HOST_GNU_TYPE)-g++-13
   bd_gcc = g++-13 <!cross>,
+else ifneq (,$(filter $(distrel),trixie oracular plucky))
+  export CC = $(DEB_HOST_GNU_TYPE)-gcc-14
+  export CXX = $(DEB_HOST_GNU_TYPE)-g++-14
+  bd_gcc = g++-14 <!cross>,
+else ifneq (,$(filter $(distrel),questing resolute))
+  export CC = $(DEB_HOST_GNU_TYPE)-gcc-15
+  export CXX = $(DEB_HOST_GNU_TYPE)-g++-15
+  bd_gcc = g++-15 <!cross>,
 else
-  export CC = $(DEB_HOST_GNU_TYPE)-gcc-13
-  export CXX = $(DEB_HOST_GNU_TYPE)-g++-13
-  bd_gcc = g++-13 <!cross>,
+  export CC = $(DEB_HOST_GNU_TYPE)-gcc-16
+  export CXX = $(DEB_HOST_GNU_TYPE)-g++-16
+  bd_gcc = g++-16 <!cross>,
 endif
 
 # GCC 11 and up
@@ -384,13 +390,26 @@ else ifeq ($(with_nss),no)
   CONFIGURE_ARGS += --disable-nss
 endif
 
-ifeq ($(with_systemtap),yes)
-  CONFIGURE_ARGS += --enable-systemtap --with-abs-install-dir=/$(basedir)
-endif
-
 COMMON_CONFIGURE_ARGS =
 DEFAULT_CONFIGURE_ARGS =
 ZERO_CONFIGURE_ARGS =
+
+no_dtrace_archs = powerpc ppc64 ppc64el sh4 s390x
+
+# PPC*, S390x and SH do not support dtrace probes
+# https://github.com/openjdk/jdk/pull/13228
+ifeq (,$(filter $(DEB_HOST_ARCH),$(no_dtrace_archs)))
+  # disable dtrace due to GCC ICE in jammy: https://launchpad.net/bugs/2091225
+  ifneq (,$(filter $(DEB_HOST_ARCH),armhf))
+    ifneq (,$(filter $(distrel),jammy))
+        COMMON_CONFIGURE_ARGS += --disable-dtrace
+    else
+        COMMON_CONFIGURE_ARGS += --enable-dtrace
+    endif
+  else
+    COMMON_CONFIGURE_ARGS += --enable-dtrace
+  endif
+endif
 
 COMMON_CONFIGURE_ARGS += --with-jni-libpath=/usr/lib/$(DEB_HOST_MULTIARCH)/jni:/lib/$(DEB_HOST_MULTIARCH):/usr/lib/$(DEB_HOST_MULTIARCH):/usr/lib/jni:/lib:/usr/lib
 
@@ -496,10 +515,12 @@ else
 	--with-vendor-vm-bug-url='Unknown'
 endif
 
+v_pkgrel_opt	:= $(subst ~,-,$(v_pkgrel))
+
 COMMON_CONFIGURE_ARGS += \
 	--with-version-pre='$(if $(filter yes, $(is_upstream_release)),,ea)' \
 	--with-version-build='$(v_upbuild)' \
-	--with-version-opt='$(distribution)-$(v_pkgrel)' \
+	--with-version-opt='$(v_pkgrel_opt)-$(distribution)' \
 	--with-copyright-year=$(PKGYEAR) \
 
 COMMON_CONFIGURE_ARGS += \
@@ -620,12 +641,6 @@ jre_hl_tools	:= $(filter-out $(jre_tools), $(all_jre_tools))
 
 # build dependencies
 ifneq (,$(filter $(distrel),precise))
-  bd_autotools = autoconf2.69, automake, autotools-dev,
-else
-  bd_autotools = autoconf, automake, autotools-dev,
-endif
-
-ifneq (,$(filter $(distrel),precise))
     bd_bootstrap = openjdk-16-jdk-headless | openjdk-17-jdk-headless,
 else ifneq (,$(filter $(distrel),squeeze wheezy jessie trusty xenial))
     bd_bootstrap = openjdk-16-jdk-headless:native | openjdk-17-jdk-headless:native,
@@ -650,6 +665,14 @@ else ifneq (,$(filter $(distrel), stretch xenial))
   bd_debhelper = debhelper (>= 9.20141010), dpkg-dev (>= 1.17.14),
 else
   bd_debhelper = debhelper (>= 11),
+endif
+
+ifneq (,$(filter $(distrel),precise))
+  bd_autotools = autoconf2.69, automake, autotools-dev,
+else ifneq (,$(filter $(old_debhelper), old veryold))
+  bd_autotools = autoconf, automake, autotools-dev,
+else
+  bd_autotools = autoconf, automake,
 endif
 
 ifneq (,$(filter $(distrel),precise))
@@ -697,6 +720,13 @@ endif
 bd_ant = ant, ant-optional,
 
 bd_fastjar = fastjar (>= 2:0.96-0ubuntu2),
+
+ifneq (,$(filter $(distrel), wheezy jessie stretch buster bullseye bionic focal jammy))
+  bd_pkgconf = pkg-config,
+else
+  bd_pkgconf = pkgconf,
+endif
+
 ifeq ($(with_nss),yes)
   ifneq (,$(filter $(distrel),squeeze lucid precise quantal))
     bd_nss = libnss3-dev (>= 3.12.3),
@@ -706,9 +736,7 @@ ifeq ($(with_nss),yes)
     bd_nss = libnss3-dev (>= 2:3.17.1),
   endif
 endif
-ifeq ($(with_systemtap),yes)
-  bd_systemtap = systemtap-sdt-dev [!sh4],
-endif
+bd_systemtap = systemtap-sdt-dev [$(foreach a,$(no_dtrace_archs),!$(a))],
 
 ifeq (,$(filter $(distrel),jessie stretch buster precise trusty xenial bionic focal groovy))
   with_debugedit = yes
@@ -725,7 +753,7 @@ ifeq (,$(filter $(distrel),precise))
 endif
 
 # look at all TEST.ROOT for the required jtreg version, sorted by newest
-min_jtreg_version := $(shell find test/ -name TEST.ROOT -exec grep -hr "^requiredVersion=" {} \; | sed -e 's:^requiredVersion=::' -e 's:$$:-0~:' | sort -uVr | head -n1 | tr ' ' '-')
+min_jtreg_version := $(shell find test/ -name TEST.ROOT -exec grep -hr "^requiredVersion=" {} \; | sed -e 's:^requiredVersion=::' -e 's:$$:~:' | sort -uVr | head -n1 | tr ' ' '-')
 
 ifeq ($(with_check),yes)
   bd_check = \
@@ -741,14 +769,20 @@ else
   bd_check = file,
 endif
 
-
+ifeq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm lucid precise trusty xenial bionic focal jammy lunar mantic))
+  t64_suffix = t64
+endif
 
 dlopen_hl_depends =
 dlopen_hl_recommends =
 
-dlopen_hl_depends += libcups2,
-dlopen_hl_depends += libfontconfig1,
-
+ifeq (,$(t64_suffix))
+  dlopen_hl_depends += libcups2,
+  dlopen_hl_depends += libfontconfig1,
+else
+  dlopen_hl_recommends += libcups2$(t64_suffix),
+  dlopen_hl_recommends += libfontconfig1,
+endif
 dlopen_hl_depends += liblcms2-2,
 
 ifeq ($(derivative),Ubuntu)
@@ -776,11 +810,13 @@ endif
 
 dlopen_jre_depends =
 dlopen_jre_recommends =
-
-dlopen_jre_depends += libglib2.0-0 (>= 2.24),
-dlopen_jre_depends += libgtk2.0-0 | libgtk-3-0,
-
-
+ifeq (,$(t64_suffix))
+  dlopen_jre_depends += libglib2.0-0 (>= 2.24),
+  dlopen_jre_depends += libgtk2.0-0 | libgtk-3-0,
+else
+  dlopen_jre_depends += libglib2.0-0t64 (>= 2.24),
+  dlopen_jre_depends += libgtk2.0-0t64 | libgtk-3-0t64,
+endif
 dlopen_jre_depends += libxrandr2, libxinerama1,
 ifneq (,$(filter $(distrel),squeeze wheezy jessie stretch lucid precise xenial))
   dlopen_jre_depends += libgl1-mesa-glx | libgl1,
@@ -791,7 +827,7 @@ ifeq ($(with_system_hb),yes)
   dlopen_jre_depends += libharfbuzz0b,
 endif
 ifeq (,$(findstring libcups, $(dlopen_hl_depends)))
-  dlopen_jre_depends += libcups2,
+  dlopen_jre_depends += libcups2$(t64_suffix),
 endif
 ifeq (,$(findstring libfontconfig, $(dlopen_hl_depends)))
   dlopen_jre_depends += libfontconfig1,
@@ -914,7 +950,7 @@ ifneq ($(with_debugedit),yes)
   control_vars += '-Vdbg:Conflicts=openjdk-11-dbg, openjdk-12-dbg, openjdk-13-dbg, openjdk-14-dbg, openjdk-15-dbg, openjdk-16-dbg'
 endif
 
-debian/control: debian/control.in debian/tests/control debian/rules debian/watch
+debian/control: debian/control.in debian/tests/control gen-autopkgtests debian/watch
 	@cp -p debian/control debian/control.old
 	sed \
 	      -e 's/@basename@/$(basename)/g' \
@@ -926,6 +962,7 @@ debian/control: debian/control.in debian/tests/control debian/rules debian/watch
 	      -e 's/@bd_zero@/$(bd_zero)/g' \
 	      -e 's/@bd_gcc@/$(bd_gcc)/g' \
 	      -e 's/@bd_syslibs@/$(bd_syslibs)/g' \
+	      -e 's/@bd_pkgconf@/$(bd_pkgconf)/g' \
 	      -e 's/@bd_fastjar@/$(bd_fastjar)/g' \
 	      -e 's/@bd_nss@/$(bd_nss)/g' \
 	      -e 's/@bd_systemtap@/$(bd_systemtap)/g' \
@@ -947,27 +984,48 @@ debian/control: debian/control.in debian/tests/control debian/rules debian/watch
 	  rm -f debian/control.old; \
 	else \
 	  diff -u debian/control.old debian/control | wdiff -d -; \
-	  echo "debian/control did change, please restart the build"; \
+	  echo "debian/control did change, please restart the build. Run make -f debian/rules update-control-files to update packaging sources."; \
 	  rm -f debian/control.old; \
 	  exit 1; \
 	fi
 
-debian/tests/control: debian/tests/control.in debian/rules
+debian/tests/control: debian/tests/control.in
+	cp -p $@ $@.old
 	sed \
 		-e 's/@jtreg_pkg@/$(jtreg_pkg)/g' \
 		-e 's/@min_jtreg_version@/$(min_jtreg_version)/g' \
 		$< > $@;
+	@if cmp -s $@ $@.old; then \
+	  rm -f $@.old; \
+	else \
+	  diff -u $@.old $@ | wdiff -d -; \
+	  echo "$@ did change, please restart the build. Run make -f debian/rules update-control-files to update packaging sources."; \
+	  rm -f $@.old; \
+	  exit 1; \
+	fi
 
-debian/tests/%.sh: debian/tests/%.in debian/rules
+debian/tests/%.sh: debian/tests/%.in
+	cp -p $@ $@.old
 	sed \
+		-e 's/@basename@/$(basename)/g' \
 		-e 's,@JDK_DIR@,/$(basedir),g' \
 		-e 's,@jtreg_pkg@,$(jtreg_pkg),g' \
 		-e 's/@jtreg_archs@/$(jtreg_archs)/g' \
 		-e 's:@doc_dir@:/usr/share/doc/$(p_jrehl)/:g' \
 		$< > $@;
 	chmod +x $@
+	@if cmp -s $@ $@.old; then \
+	  rm -f $@.old; \
+	else \
+	  diff -u $@.old $@ | wdiff -d -; \
+	  echo "$@ did change, please restart the build. Run make -f debian/rules update-control-files to update packaging sources."; \
+	  rm -f $@.old; \
+	  exit 1; \
+	fi
 
-gen-autopkgtests: debian/tests/jtdiff-autopkgtest.sh debian/tests/jtreg-autopkgtest.sh
+gen-autopkgtests: debian/tests/jtdiff-autopkgtest.sh \
+	debian/tests/jtreg-autopkgtest.sh \
+	debian/tests/write-problems.sh
 
 packaging-files:
 	for f in debian/*.in; do \
@@ -1096,7 +1154,38 @@ build_stamps = \
 
 build_stamps +=  stamps/jtreg-check-default
 
-pre-build:
+update-control-files: debian/control debian/tests/control gen-autopkgtests update-license
+
+update-license:
+ifneq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm lucid precise trusty xenial bionic focal))
+	@echo "Skipping debian/copyright valdidation for $(distrel), old release."
+else
+	@cp -p debian/copyright debian/copyright.old
+	./debian/copyright-generator/copyright-gen.py
+	@if cmp -s  debian/copyright debian/copyright.old; then \
+	  rm -f  debian/copyright.old; \
+	else \
+	  diff -u debian/copyright.old debian/copyright | wdiff -d -; \
+	  echo "debian/copyright did change, please restart the build. Run make -f debian/rules update-control-files to update packaging sources."; \
+	  rm -f debian/copyright.old; \
+	  exit 1; \
+	fi
+endif
+
+PRE_BUILD_DEP =
+ifeq (,$(filter nogen, $(DEB_BUILD_OPTIONS)))
+# Only check control files on amd64
+ifeq (amd64,$(DEB_HOST_ARCH))
+PRE_BUILD_DEP = update-control-files
+endif
+endif
+
+# do not check control files if with_check is disabled
+ifneq ($(with_check),yes)
+PRE_BUILD_DEP =
+endif
+
+pre-build: $(PRE_BUILD_DEP)
 ifeq ($(with_check),yes)
 	jtreg_version="$$(dpkg-query -f '$${Version}\n' -W $(jtreg_pkg))"; \
 	if ! dpkg --compare-versions $(min_jtreg_version) le $$jtreg_version; then \
@@ -1126,22 +1215,39 @@ stamps/build: stamps/configure
 ifneq (,$(filter $(DEB_HOST_ARCH), alpha armel armhf ia64 loong64 m68k mips mipsel mips64 mips64el powerpc riscv64 s390x sh4 sparc sparc64))
 	sh -c 'sh debian/buildwatch.sh $(CURDIR)/$(builddir) &'
 endif
-	if $(EXTRA_BUILD_ENV) $(MAKE) --no-print-directory -C $(builddir) $(build_target); then \
-	  : ; \
-	else \
-	  if [ -f buildwatch.pid ]; then \
-	    pid=$$(cat buildwatch.pid); \
-	    kill -1 $$pid || :; sleep 1; kill -9 $$pid || :; \
-	  fi; \
-	  false; \
-	fi
+	$(EXTRA_BUILD_ENV) $(MAKE) --no-print-directory -C $(builddir) $(build_target); \
+	rv=$$?; \
+	for log in `find $(builddir) -name 'hs_err_pid*.log' -o -name 'replay_pid*.log'`; do \
+	  [ -f $$log ] || continue; \
+	  echo "=== $$log ==="; \
+	  cat $$log; \
+	  echo "======"; \
+	done; \
+	if [ -f buildwatch.pid ]; then \
+	  pid=$$(cat buildwatch.pid); \
+	  kill -1 $$pid || :; sleep 1; kill -9 $$pid || :; \
+	fi; \
+	exit $$rv
 
 	touch $@
 
 stamps/zero-build: stamps/zero-configure
 	@echo '========== $@ =========='
 	: # FIXME: build using the just built jdk, and build the vm only
-	$(EXTRA_BUILD_ENV) $(MAKE) --no-print-directory -C $(zbuilddir) $(zbuild_target)
+	$(EXTRA_BUILD_ENV) $(MAKE) --no-print-directory -C $(zbuilddir) $(zbuild_target); \
+	rv=$$?; \
+	for log in `find $(zbuilddir) -name 'hs_err_pid*.log' -o -name 'replay_pid*.log'`; do \
+	  [ -f $$log ] || continue; \
+	  echo "=== $$log ==="; \
+	  cat $$log; \
+	  echo "======"; \
+	done; \
+	if [ -f buildwatch.pid ]; then \
+	  pid=$$(cat buildwatch.pid); \
+	  kill -1 $$pid || :; sleep 1; kill -9 $$pid || :; \
+	fi; \
+	exit $$rv
+
 	rm -rf $(builddir)/$(sdkimg)/lib/zero
 	cp -a $(zbuilddir)/$(zsdkimg)/lib/server \
 		$(builddir)/$(sdkimg)/lib/zero
@@ -1204,7 +1310,7 @@ ifneq (,$(filter $(VMNAME), $(with_jtreg_check)))
 	@echo "END jtreg-summary-$(VMNAME)"
 
 	-for i in hotspot langtools jaxp jdk; do \
-	  find jtreg-test-output/$$i/JTwork/ -name '*.jtr'; \
+	  find jtreg-test-output/$$i/JTwork/ -name '*.jtr' -o -name 'hs_err_pid*.log' -o -name 'replay_pid*.log'; \
 	done | sort -u > jtreg-test-output/failed_tests-$(VMNAME).list; \
 	GZIP=-9vn tar --ignore-failed-read -C . -c -z -f jtreg-test-output/failed_tests-$(VMNAME).tar.gz -T jtreg-test-output/failed_tests-$(VMNAME).list
 	GZIP=-9vn tar -C . -c -z -f jtreg-test-output/jtreport-$(VMNAME).tar.gz $$(find jtreg-test-output -name JTreport)
@@ -1729,14 +1835,9 @@ endif
 
 	: # OpenJDK Stack Unwinder and Frame Decorator
 ifneq (,$(filter $(DEB_HOST_ARCH),amd64))
-	mkdir -p $(d_jrehl)/usr/share/gdb/auto-load/$(basedir)/jre/lib/server
+	mkdir -p $(d_jrehl)/usr/share/gdb/auto-load/$(basedir)/lib/server
 	cp debian/dbg.py \
-	  $(d_jrehl)/usr/share/gdb/auto-load/$(basedir)/jre/lib/server/libjvm.so-gdb.py
-  ifneq (,$(filter zero, $(alternate_vms)))
-	mkdir -p $(d_jrez)/usr/share/gdb/auto-load/$(basedir)/jre/lib/zero
-	ln -sf ../server/libjvm.so-gdb.py \
-	  $(d_jrez)/usr/share/gdb/auto-load/$(basedir)/jre/lib/zero/libjvm.so
-  endif
+	  $(d_jrehl)/usr/share/gdb/auto-load/$(basedir)/lib/server/libjvm.so-gdb.py
 endif
 
 ifeq ($(with_bridge),atk)
@@ -1816,11 +1917,6 @@ endif
 	mkdir -p $(d_jrehl)/usr/lib/debug/usr/lib/jvm/$(jdirname)
 	ln -sf $(jdirname) $(d_jrehl)/usr/lib/debug/usr/lib/jvm/$(jdiralias)
 
-ifeq ($(with_systemtap),yes FIXME)
-	: # systemtap support
-	mkdir -p $(d_jrehl)/usr/share/systemtap/tapset
-	cp -p build/tapset/hotspot.stp $(d_jrehl)/usr/share/systemtap/tapset/
-endif
 
 	: # install lintian overrides
 	for FILE in debian/*.overrides; do \
@@ -1845,10 +1941,10 @@ ifeq ($(with_docs),yes)
 	  cp -a $$i $(d_doc)/usr/share/doc/$(p_jrehl)/; \
 	  ln -sf ../$(p_jrehl)/$$b $(d_doc)/usr/share/doc/$(p_doc)/$$b; \
 	done
-	rm -v $(d_doc)/usr/share/doc/$(p_jrehl)/api/script-dir/{jquery-3.6.1.min.js,jquery-ui.min.css,jquery-ui.min.js}
+	rm -v $(d_doc)/usr/share/doc/$(p_jrehl)/api/script-dir/{jquery-3.7.1.min.js,jquery-ui.min.css,jquery-ui.min.js}
 	dh_link -p$(p_doc) \
 	  /usr/share/javascript/jquery/jquery.min.js \
-	    /usr/share/doc/$(p_jrehl)/api/script-dir/jquery-3.6.1.min.js \
+	    /usr/share/doc/$(p_jrehl)/api/script-dir/jquery-3.7.1.min.js \
 	  /usr/share/javascript/jquery-ui/themes/base/jquery-ui.min.css \
 	    /usr/share/doc/$(p_jrehl)/api/script-dir/jquery-ui.min.css \
 	  /usr/share/javascript/jquery-ui/jquery-ui.min.js \
@@ -1952,7 +2048,7 @@ endif
 	dh_builddeb -a $(nodemo) $(nojrez) #$(bd_options)
 
 git_project		= jdk17u
-git_tag			= jdk-17.0.12+7
+git_tag			= jdk-17.0.21.1+2
 package_version		= $(subst jdk-,,$(git_tag))
 package_version		= $(shell echo $(PKGVERSION) | sed 's/-[^-][^-]*$$//')
 ifneq ($(is_upstream_release),yes)
@@ -1966,6 +2062,7 @@ gtest_tag = 1.14.0
 gtestdir = ../$(basename)-$(package_version)-googletest.orig
 
 debian/watch: debian/watch.in debian/rules
+	@cp -p $@ $@.old
 	sed \
 		-e 's|@git_url@|$(git_url)/tags|g' \
 		-e 's|@gtest_repo@|$(gtest_repo)/tags|g' \
@@ -1976,6 +2073,14 @@ debian/watch: debian/watch.in debian/rules
 ifeq ($(is_upstream_release),yes)
 	sed -i 's|repack.*\\|repack,\\|g' debian/watch
 endif
+	@if cmp -s $@ $@.old; then \
+		rm -f $@.old; \
+	else \
+		diff -u $@.old $@ | wdiff -d -; \
+		echo "$@ did change, please restart the build"; \
+		rm -f $@.old; \
+		exit 1; \
+	fi
 
 get-gtest:
 	rm -rf $(gtestdir) || true
@@ -2021,4 +2126,4 @@ get-orig: get-gtest
 	rm -rf $(origdir)
 
 binary: binary-arch binary-indep
-.PHONY: build build-arch build-indep clean binary-indep binary-arch binary install packaging-files
+.PHONY: build build-arch build-indep clean binary-indep binary-arch binary install packaging-files debian/control debian/tests/control gen-autopkgtests debian/watch update-control-files update-license

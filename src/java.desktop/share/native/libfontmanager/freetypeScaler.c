@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -486,6 +486,8 @@ static double euclidianDistance(double a, double b) {
     return sqrt(a*a+b*b);
 }
 
+#define TOO_LARGE(a, b) (abs((int)(a / b)) > 32766)
+
 JNIEXPORT jlong JNICALL
 Java_sun_font_FreetypeFontScaler_createScalerContextNative(
         JNIEnv *env, jobject scaler, jlong pScaler, jdoubleArray matrix,
@@ -497,7 +499,7 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
              (FTScalerInfo*) jlong_to_ptr(pScaler);
 
     if (context == NULL) {
-        invalidateJavaScaler(env, scaler, NULL);
+        free(context);
         return (jlong) 0;
     }
     (*env)->GetDoubleArrayRegion(env, matrix, 0, 4, dmat);
@@ -506,7 +508,18 @@ Java_sun_font_FreetypeFontScaler_createScalerContextNative(
         //text can not be smaller than 1 point
         ptsz = 1.0;
     }
+    if (ptsz > 16384) {
+        ptsz = 16384;    // far enough from 32767
+        fm = TEXT_FM_ON; // avoids calculations which might overflow
+    }
     context->ptsz = (int)(ptsz * 64);
+    if (TOO_LARGE(dmat[0], ptsz) || TOO_LARGE(dmat[1], ptsz) ||
+        TOO_LARGE(dmat[2], ptsz) || TOO_LARGE(dmat[3], ptsz))
+    {
+        free(context);
+        return (jlong)0;
+    }
+
     context->transform.xx =  FloatToFTFixed((float)(dmat[0]/ptsz));
     context->transform.yx = -FloatToFTFixed((float)(dmat[1]/ptsz));
     context->transform.xy = -FloatToFTFixed((float)(dmat[2]/ptsz));
@@ -819,10 +832,12 @@ static void CopyGrey4ToGrey8(const void* srcImage, int srcRowBytes,
          srcRow += srcRowBytes;
          dstRow += dstRowBytes;
 
-         for (i = 0; i < width; i++) {
+         for (i = 0; i < width; i += 2) {
              srcValue = *src8++;
-             *dstByte++ = Grey4ToAlpha255(srcValue & 0x0f);
              *dstByte++ = Grey4ToAlpha255(srcValue >> 4);
+             if (i < width-1) {
+                 *dstByte++ = Grey4ToAlpha255(srcValue & 0x0f);
+             }
          }
      }
 }
