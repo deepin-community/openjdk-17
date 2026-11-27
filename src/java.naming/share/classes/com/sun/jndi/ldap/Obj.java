@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 1999, 2026, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -107,6 +107,14 @@ final class Obj {
     static final int REF_OBJECT = 2;    // auxiliary reference object class
     static final int SER_OBJECT = 3;    // auxiliary serialized object class
     static final int MAR_OBJECT = 4;    // auxiliary marshalled object class
+
+    /**
+     * Whether deserialization of serial data is allowed
+     * @return true if deserialization of serial data is allowed
+     */
+    static boolean trustSerialData() {
+        return VersionHelper.isSerialDataAllowed();
+    }
 
     /**
      * Encode an object in LDAP attributes.
@@ -239,6 +247,10 @@ final class Obj {
                 ClassLoader cl = helper.getURLClassLoader(codebases);
                 return deserializeObject((byte[])attr.get(), cl);
             } else if ((attr = attrs.get(JAVA_ATTRIBUTES[REMOTE_LOC])) != null) {
+                 // javaRemoteLocation attribute (RMI stub will be created)
+                 if (!VersionHelper.isSerialDataAllowed()) {
+                     throw new NamingException("Object deserialization is not allowed");
+                 }
                 // For backward compatibility only
                 return decodeRmiObject(
                     (String)attrs.get(JAVA_ATTRIBUTES[CLASSNAME]).get(),

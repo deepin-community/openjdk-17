@@ -1,0 +1,19 @@
+#!/bin/bash
+
+problem_list=$1
+upstream_problems=$2
+
+cat ${upstream_problems} > ${problem_list}
+distrel=`lsb_release --codename --short`
+host_arch="${DEB_HOST_ARCH:-$(dpkg --print-architecture)}"
+
+grep -e ${host_arch} -e "arch-all" debian/tests/problems.csv | \
+  grep -e ${distrel} -e "release-all" | \
+  grep -e "openjdk-17" | \
+  awk -F',|:' '{gsub(/ /, "", $2); print $2" 000000 generic-all" }' >> ${problem_list}
+
+if [ "${host_arch}" == "loong64" ]; then
+    cat debian/tests/problems-loong-hotspot.txt >> ${problem_list}
+    cat debian/tests/problems-loong-jdk.txt >> ${problem_list}
+    cat debian/tests/problems-loong-other.txt >> ${problem_list}
+fi

@@ -22,7 +22,7 @@ License: MIT
 
 Files: debian/dbg.py
 Copyright: Copyright 2016, Red Hat and individual contributors
-License: LGPL
+License: LGPL-2.1
   # Copyright 2016, Red Hat and individual contributors
   # by the @authors tag.
   #

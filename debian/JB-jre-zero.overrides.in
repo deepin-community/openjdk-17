@@ -1,2 +1,13 @@
-# Strip libjvm.so with --strip-debug instead of --strip-unneeded. LP: #574997.
+# keep symbols so that native memory tracking works
+# See https://bugs.launchpad.net/ubuntu/+source/openjdk-20/+bug/2012326
 @basename@-jre-zero binary: unstripped-binary-or-object
+
+# Upstream implementation
+@basename@-jre-zero binary: spelling-error-in-binary
+
+# repeated lib due to upstream implementation directory layout
+@basename@-jre-zero binary: repeated-path-segment
+
+# https://bugs.openjdk.org/browse/JDK-6454213 - i386 openjdk libjvm.so includes
+# code compiled with -fno-PIC.
+@basename@-jre-zero binary: specific-address-in-shared-library [usr/lib/jvm/java-@RELEASE@-openjdk-i386/lib/zero/libjvm.so]

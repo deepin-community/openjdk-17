@@ -1517,27 +1517,33 @@ private:
   void vmovdqu(XMMRegister dst, XMMRegister src);
 
    // Move Unaligned 512bit Vector
-  void evmovdqub(Address dst, XMMRegister src, bool merge, int vector_len);
-  void evmovdqub(XMMRegister dst, Address src, bool merge, int vector_len);
-  void evmovdqub(XMMRegister dst, XMMRegister src, bool merge, int vector_len);
+  void evmovdqub(XMMRegister dst, XMMRegister src, int vector_len);
+  void evmovdqub(XMMRegister dst, Address src, int vector_len);
+  void evmovdqub(XMMRegister dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
   void evmovdqub(XMMRegister dst, KRegister mask, Address src, bool merge, int vector_len);
   void evmovdqub(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
-  void evmovdquw(Address dst, XMMRegister src, bool merge, int vector_len);
-  void evmovdquw(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
-  void evmovdquw(XMMRegister dst, Address src, bool merge, int vector_len);
+
+  void evmovdquw(XMMRegister dst, Address src, int vector_len);
+  void evmovdquw(Address dst, XMMRegister src, int vector_len);
+  void evmovdquw(XMMRegister dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
   void evmovdquw(XMMRegister dst, KRegister mask, Address src, bool merge, int vector_len);
-  void evmovdqul(Address dst, XMMRegister src, int vector_len);
-  void evmovdqul(XMMRegister dst, Address src, int vector_len);
+  void evmovdquw(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
+
   void evmovdqul(XMMRegister dst, XMMRegister src, int vector_len);
-  void evmovdqul(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
-  void evmovdqul(XMMRegister dst, KRegister mask, Address src, bool merge, int vector_len);
+  void evmovdqul(XMMRegister dst, Address src, int vector_len);
+  void evmovdqul(Address dst, XMMRegister src, int vector_len);
+
   void evmovdqul(XMMRegister dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
+  void evmovdqul(XMMRegister dst, KRegister mask, Address src, bool merge, int vector_len);
+  void evmovdqul(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
+
   void evmovdquq(Address dst, XMMRegister src, int vector_len);
   void evmovdquq(XMMRegister dst, Address src, int vector_len);
   void evmovdquq(XMMRegister dst, XMMRegister src, int vector_len);
-  void evmovdquq(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
-  void evmovdquq(XMMRegister dst, KRegister mask, Address src, bool merge, int vector_len);
+
   void evmovdquq(XMMRegister dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
+  void evmovdquq(XMMRegister dst, KRegister mask, Address src, bool merge, int vector_len);
+  void evmovdquq(Address dst, KRegister mask, XMMRegister src, bool merge, int vector_len);
 
   // Move lower 64bit to high 64bit in 128bit register
   void movlhps(XMMRegister dst, XMMRegister src);
@@ -1584,7 +1590,6 @@ private:
 
   // Move signed 32bit immediate to 64bit extending sign
   void movslq(Address  dst, int32_t imm64);
-  void movslq(Register dst, int32_t imm64);
 
   void movslq(Register dst, Address src);
   void movslq(Register dst, Register src);
@@ -1645,7 +1650,7 @@ private:
   void negq(Address dst);
 #endif
 
-  void nop(int i = 1);
+  void nop(uint i = 1);
 
   void notl(Register dst);
 
@@ -2116,6 +2121,7 @@ private:
   void xorb(Address dst, Register src);
   void xorb(Register dst, Address src);
   void xorw(Register dst, Register src);
+  void xorw(Register dst, Address src);
 
   void xorq(Register dst, Address src);
   void xorq(Address dst, int32_t imm32);

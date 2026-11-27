@@ -12,6 +12,8 @@ if [ -z "${AUTOPKGTEST_TMP+x}" ] || [ -z "${AUTOPKGTEST_ARTIFACTS+x}" ]; then
   exit 1
 fi
 
+ulimit -c unlimited || echo "Unable to set ulimit -c unlimited, coredump tests will fail"
+
 host_arch="${DEB_HOST_ARCH:-$(dpkg --print-architecture)}"
 
 if [ -z "${JDK_TO_TEST+x}" ]; then
@@ -30,7 +32,13 @@ if [[ "armel" == *"${host_arch}"* ]]; then
   jt_options+=" -Xmx256M"
 fi
 if dpkg --compare-versions ${jtreg_version} ge 4.2; then
-  jt_options+=" -conc:auto"
+  njobs=auto
+  for opt in ${DEB_BUILD_OPTIONS:-}; do
+    if test "${opt#parallel=}" != "$opt"; then
+      njobs="${opt#parallel=}"
+    fi
+  done
+  jt_options+=" -conc:$njobs"
 fi
 
 # check java binary
@@ -45,7 +53,7 @@ if [ ! -x "${BOOTJDK_HOME}/bin/java" ]; then
 fi
 
 # restrict the tests to a few archs (set from debian/rules)
-if ! echo "${host_arch}" | grep -qE "^($(echo amd64 i386 arm64 armhf ppc64 ppc64el s390x alpha ia64 powerpc ppc64 sh4 x32 armel mipsel mips64el riscv64 | tr ' ' '|'))$"; then
+if ! echo "${host_arch}" | grep -qE "^($(echo amd64 i386 arm64 armhf ppc64 ppc64el riscv64 s390x alpha ia64 powerpc ppc64 sh4 x32 armel loong64 mipsel mips64el riscv64 | tr ' ' '|'))$"; then
   echo "Error: ${host_arch} is not on the jtreg_archs list, ignoring it."
   exit 77
 fi
@@ -91,27 +99,39 @@ trap "cleanup" EXIT INT TERM ERR
 jtwork_dir="${AUTOPKGTEST_TMP}/${testsuite}/JTwork"
 output_dir="${AUTOPKGTEST_ARTIFACTS}/${testsuite}/"
 
+# force utf-8 for tests
+distrel=$(lsb_release --codename --short)
+case "$distrel" in
+    bionic|focal)
+        c_utf8="C.UTF-8"
+        ;;
+    *)
+        c_utf8="C.UTF8"
+        ;;
+esac
+
+LANG=${c_utf8}
+
 # retry tests with "fail" or "error" status at most 3 times
 for i in 0 1; do
   # save each try under its own folder to preserve history
   report_path="${i}/JTreport"
   report_dir="${output_dir}/${report_path}"
-# see make/RunTests.gmk for a set of good options
-  jtreg ${jt_options} \
-    -J-Djtreg.home=/usr/share/jtreg \
+  LANG=${c_utf8} LC_ALL=${c_utf8} jtreg ${jt_options} \
+    -vmoption:-Djtreg.home=/usr/share/jtreg \
     -verbose:summary \
     -automatic \
     -retain:none \
     -ignore:quiet \
     -agentvm \
-    -timeout:5 \
+    -timeout:10 \
     -workDir:"${jtwork_dir}" \
     -reportDir:"${report_dir}" \
     -jdk:${JDK_TO_TEST} \
     -vmoption:-Dtest.boot.jdk=${BOOTJDK_HOME} \
+    -vmoption:-XX:MaxRAMPercentage=25 \
     -vmoption:-Duser.home=${AUTOPKGTEST_TMP} \
     -vmoption:-Djava.io.tmpdir=${AUTOPKGTEST_TMP} \
-    -vmoption:-XX:MaxRAMPercentage=25 \
     -e:NSS_DEFAULT_DB_TYPE=sql \
     ${on_retry:-} $@ \
       && exit_code=0 || exit_code=$?

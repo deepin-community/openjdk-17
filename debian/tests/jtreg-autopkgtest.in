@@ -12,6 +12,8 @@ if [ -z "${AUTOPKGTEST_TMP+x}" ] || [ -z "${AUTOPKGTEST_ARTIFACTS+x}" ]; then
   exit 1
 fi
 
+ulimit -c unlimited || echo "Unable to set ulimit -c unlimited, coredump tests will fail"
+
 host_arch="${DEB_HOST_ARCH:-$(dpkg --print-architecture)}"
 
 if [ -z "${JDK_TO_TEST+x}" ]; then
@@ -30,12 +32,23 @@ if [[ "armel" == *"${host_arch}"* ]]; then
   jt_options+=" -Xmx256M"
 fi
 if dpkg --compare-versions ${jtreg_version} ge 4.2; then
-  jt_options+=" -conc:auto"
+  njobs=auto
+  for opt in ${DEB_BUILD_OPTIONS:-}; do
+    if test "${opt#parallel=}" != "$opt"; then
+      njobs="${opt#parallel=}"
+    fi
+  done
+  jt_options+=" -conc:$njobs"
 fi
 
 # check java binary
 if [ ! -x "${JDK_TO_TEST}/bin/java" ]; then
   echo "Error: '${JDK_TO_TEST}/bin/java' is not an executable." >&2
+  exit 1
+fi
+
+if [ ! -x "${BOOTJDK_HOME}/bin/java" ]; then
+  echo "Error: '${BOOTJDK_HOME}/bin/java' is not an executable." >&2
   exit 1
 fi
 
@@ -86,19 +99,32 @@ trap "cleanup" EXIT INT TERM ERR
 jtwork_dir="${AUTOPKGTEST_TMP}/${testsuite}/JTwork"
 output_dir="${AUTOPKGTEST_ARTIFACTS}/${testsuite}/"
 
+# force utf-8 for tests
+distrel=$(lsb_release --codename --short)
+case "$distrel" in
+    bionic|focal)
+        c_utf8="C.UTF-8"
+        ;;
+    *)
+        c_utf8="C.UTF8"
+        ;;
+esac
+
+LANG=${c_utf8}
+
 # retry tests with "fail" or "error" status at most 3 times
 for i in 0 1; do
   # save each try under its own folder to preserve history
   report_path="${i}/JTreport"
   report_dir="${output_dir}/${report_path}"
-  jtreg ${jt_options} \
+  LANG=${c_utf8} LC_ALL=${c_utf8} jtreg ${jt_options} \
     -vmoption:-Djtreg.home=/usr/share/jtreg \
     -verbose:summary \
     -automatic \
     -retain:none \
     -ignore:quiet \
     -agentvm \
-    -timeout:5 \
+    -timeout:10 \
     -workDir:"${jtwork_dir}" \
     -reportDir:"${report_dir}" \
     -jdk:${JDK_TO_TEST} \
