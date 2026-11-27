@@ -1,3 +1,9 @@
+openjdk-17 (17.0.21.1+2-1~deb12u1deepin1) unstable; urgency=medium
+
+  * Add crimson and snipe to the distrel lists in debian/rules.
+
+ -- Tianyu Chen <sweetyfish@deepin.org>  Fri, 27 Nov 2026 11:32:22 +0800
+
 openjdk-17 (17.0.21.1+2-1~deb12u1) bookworm-security; urgency=medium
 
   * Rebuild for bookworm.

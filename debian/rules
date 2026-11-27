@@ -267,7 +267,7 @@ else ifneq (,$(filter $(distrel),jammy))
   export CC = $(DEB_HOST_GNU_TYPE)-gcc-11
   export CXX = $(DEB_HOST_GNU_TYPE)-g++-11
   bd_gcc = g++-11 <!cross>,
-else ifneq (,$(filter $(distrel),bookworm lunar))
+else ifneq (,$(filter $(distrel),bookworm crimson snipe lunar))
   export CC = $(DEB_HOST_GNU_TYPE)-gcc-12
   export CXX = $(DEB_HOST_GNU_TYPE)-g++-12
   bd_gcc = g++-12 <!cross>,
@@ -769,7 +769,7 @@ else
   bd_check = file,
 endif
 
-ifeq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm lucid precise trusty xenial bionic focal jammy lunar mantic))
+ifeq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm crimson snipe lucid precise trusty xenial bionic focal jammy lunar mantic))
   t64_suffix = t64
 endif
 
@@ -1157,7 +1157,7 @@ build_stamps +=  stamps/jtreg-check-default
 update-control-files: debian/control debian/tests/control gen-autopkgtests update-license
 
 update-license:
-ifneq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm lucid precise trusty xenial bionic focal))
+ifneq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm crimson snipe lucid precise trusty xenial bionic focal))
 	@echo "Skipping debian/copyright valdidation for $(distrel), old release."
 else
 	@cp -p debian/copyright debian/copyright.old
@@ -2019,7 +2019,7 @@ endif
 	dh_compress -a $(nodemo) $(nojrez) -Xexamples -Xdemo -Xpackage-list
 	dh_fixperms -a $(nodemo) $(nojrez)
 	dh_makeshlibs -p$(p_jrehl) -p$(p_jre)
-ifneq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm lucid precise trusty xenial bionic focal jammy lunar mantic))
+ifneq (,$(filter $(distrel),squeeze wheezy jessie stretch buster bullseye bookworm crimson snipe lucid precise trusty xenial bionic focal jammy lunar mantic))
 	dh_shlibdeps -a $(nodemo) $(nojrez) -L $(p_jrehl) \
 		-l$(shlibdeps_ld_path) \
 		--
